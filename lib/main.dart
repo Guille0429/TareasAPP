@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,7 +9,6 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
 
   @override
   Widget build(BuildContext context) {
@@ -30,11 +30,47 @@ class _TaskScreenState extends State<TaskScreen> {
   List<Map<String, dynamic>> tareas = [];
   TextEditingController controller = TextEditingController();
    String prioridadSeleccionada = 'Media';
+
+   DateTime? fechaSeleccionada;
+   TimeOfDay? horaSeleccionada;
+
+   //INIT
   @override
   void initState() {
     super.initState();
     cargarTareas();
   }
+
+  //Funciones
+
+  Future<void> seleccionarFecha() async{
+     DateTime? picked = await showDatePicker(
+         context: context,
+         initialDate: DateTime.now(),
+         firstDate: DateTime.now(),
+         lastDate: DateTime(2100),
+     );
+
+     if (picked !=null) {
+       setState(() {
+          fechaSeleccionada = picked;
+       });
+     }
+  }
+
+  Future<void> seleccionarHora() async {
+    TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (picked != null) {
+      setState(() {
+        horaSeleccionada = picked;
+      });
+    }
+  }
+
 
   Future<void> guardarTareas() async {
     final prefs = await SharedPreferences.getInstance();
@@ -53,6 +89,7 @@ class _TaskScreenState extends State<TaskScreen> {
     }
   }
 
+  //Agregar tareas ADD
   void agregarTarea() {
     if (controller.text.isNotEmpty) {
       setState(() {
@@ -60,9 +97,19 @@ class _TaskScreenState extends State<TaskScreen> {
           'texto': controller.text,
           'completado': false,
           'prioridad': prioridadSeleccionada,
+          'fecha': fechaSeleccionada != null
+            ? "${fechaSeleccionada!.day}/${fechaSeleccionada!.month}/${fechaSeleccionada!.year}"
+              :"Sin fecha",
+          'hora': horaSeleccionada != null
+            ? horaSeleccionada!.format(context)
+              :"Sin hora",
         });
         controller.clear();
+
+        fechaSeleccionada = null;
+        horaSeleccionada = null;
       });
+
       guardarTareas();
     }
   }
@@ -141,6 +188,28 @@ class _TaskScreenState extends State<TaskScreen> {
             },
           ),
 
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton(
+                  onPressed: seleccionarFecha,
+                  child: Text(
+                     fechaSeleccionada == null
+                         ? "Seleccionar Fecha"
+                         : "${fechaSeleccionada!.day}/${fechaSeleccionada!.month}/${fechaSeleccionada!.year}",
+                  ),
+              ),
+              ElevatedButton(
+                  onPressed: seleccionarHora,
+                  child: Text(
+                    horaSeleccionada == null
+                        ? "Seleccionar Hora"
+                        : horaSeleccionada!.format(context),
+                  ),
+              ),
+            ],
+          ),
+
           Expanded(
             child: ListView.builder(
               itemCount: tareas.length,
@@ -162,18 +231,31 @@ class _TaskScreenState extends State<TaskScreen> {
                             : TextDecoration.none,
                       ),
                     ),
-                    subtitle: Text(
-                      tareas[index]['prioridad'] ?? 'Media', // Evita el error Null del pantallazo rojo
-                      style: TextStyle(
-                        color: (tareas[index]['prioridad'] ?? 'Media') == 'Alta'
-                            ? Colors.red
-                            : (tareas[index]['prioridad'] ?? 'Media') == 'Media'
-                            ? Colors.orange
-                            : Colors.green,
-                      ),
-                    ),
-                    leading: Checkbox(
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tareas[index]['prioridad'] ?? 'Media',
+                          style: TextStyle(
+                            color: (tareas[index]['prioridad'] ?? 'Media') == 'Alta'
+                                ? Colors.red
+                                : (tareas[index]['prioridad'] ?? 'Media') == 'Media'
+                                ? Colors.orange
+                                : Colors.green,
+                          ),
+                        ),
 
+                        Text(
+                          "📅 ${tareas[index]['fecha'] ?? 'Sin fecha'}   ⏰ ${tareas[index]['hora'] ?? 'Sin hora'}",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    leading: Checkbox(
                       value: tareas[index]['completado'],
                       onChanged: (value) =>
                           toggleTarea(index, value!),
