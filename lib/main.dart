@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,12 +28,12 @@ class TaskScreen extends StatefulWidget {
 class _TaskScreenState extends State<TaskScreen> {
   List<Map<String, dynamic>> tareas = [];
   TextEditingController controller = TextEditingController();
-   String prioridadSeleccionada = 'Media';
+  String prioridadSeleccionada = 'Media';
 
-   DateTime? fechaSeleccionada;
-   TimeOfDay? horaSeleccionada;
+  DateTime? fechaSeleccionada;
+  TimeOfDay? horaSeleccionada;
 
-   //INIT
+  //INIT
   @override
   void initState() {
     super.initState();
@@ -43,19 +42,19 @@ class _TaskScreenState extends State<TaskScreen> {
 
   //Funciones
 
-  Future<void> seleccionarFecha() async{
-     DateTime? picked = await showDatePicker(
-         context: context,
-         initialDate: DateTime.now(),
-         firstDate: DateTime.now(),
-         lastDate: DateTime(2100),
-     );
+  Future<void> seleccionarFecha() async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
 
-     if (picked !=null) {
-       setState(() {
-          fechaSeleccionada = picked;
-       });
-     }
+    if (picked != null) {
+      setState(() {
+        fechaSeleccionada = picked;
+      });
+    }
   }
 
   Future<void> seleccionarHora() async {
@@ -89,6 +88,131 @@ class _TaskScreenState extends State<TaskScreen> {
     }
   }
 
+  void toggleDestacada(int index) {
+    setState(() {
+      tareas[index]['destacada'] = !(tareas[index]['destacada'] ?? false);
+    });
+    guardarTareas();
+  }
+
+  void mostrarModalNuevaTarea() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery
+                .of(context)
+                .viewInsets
+                .bottom + 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Nueva tarea",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    hintText: "Escribe una tarea",
+                    filled: true,
+                    fillColor: Colors.grey[200],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                DropdownButtonFormField<String>(
+                  value: prioridadSeleccionada,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+                  items: ['Alta', 'Media', 'Baja']
+                      .map((String value) {
+                    return DropdownMenuItem(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      prioridadSeleccionada = value!;
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: seleccionarFecha,
+                        child: Text(
+                          fechaSeleccionada == null
+                              ? "Fecha"
+                              : "${fechaSeleccionada!.day}/${fechaSeleccionada!
+                              .month}/${fechaSeleccionada!.year}",
+
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 10),
+
+                    Expanded(child: ElevatedButton(
+                      onPressed: seleccionarHora,
+                      child: Text(
+                        horaSeleccionada == null
+                            ? "Hora"
+                            : horaSeleccionada!.format(context),
+                      ),
+                    ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      agregarTarea();
+                      Navigator.pop(context);
+                    },
+                    child: const Text("Guardar Tarea"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   //Agregar tareas ADD
   void agregarTarea() {
     if (controller.text.isNotEmpty) {
@@ -96,13 +220,15 @@ class _TaskScreenState extends State<TaskScreen> {
         tareas.add({
           'texto': controller.text,
           'completado': false,
+          'destacada': false,
           'prioridad': prioridadSeleccionada,
           'fecha': fechaSeleccionada != null
-            ? "${fechaSeleccionada!.day}/${fechaSeleccionada!.month}/${fechaSeleccionada!.year}"
-              :"Sin fecha",
+              ? "${fechaSeleccionada!.day}/${fechaSeleccionada!
+              .month}/${fechaSeleccionada!.year}"
+              : "Sin fecha",
           'hora': horaSeleccionada != null
-            ? horaSeleccionada!.format(context)
-              :"Sin hora",
+              ? horaSeleccionada!.format(context)
+              : "Sin hora",
         });
         controller.clear();
 
@@ -115,10 +241,37 @@ class _TaskScreenState extends State<TaskScreen> {
   }
 
   void eliminarTarea(int index) {
-    setState(() {
-      tareas.removeAt(index);
-    });
-    guardarTareas();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Eliminar tarea"),
+          content: const Text(
+            "Estás seguro de borarr esta tarea",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text("Cancelar"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  tareas.removeAt(index);
+                });
+
+                guardarTareas();
+
+                Navigator.pop(context);
+              },
+              child: const Text("Eliminar"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void toggleTarea(int index, bool value) {
@@ -130,10 +283,17 @@ class _TaskScreenState extends State<TaskScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tareasPendientes =
+    tareas.where((t) => t['completado'] == false).toList();
+
+    final tareasCompletadas =
+    tareas.where((t) => t['completado'] == true).toList();
+
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       floatingActionButton: FloatingActionButton(
-          onPressed: agregarTarea,
+        onPressed: mostrarModalNuevaTarea,
         child: const Icon(Icons.add),
       ),
       appBar: AppBar(
@@ -142,134 +302,102 @@ class _TaskScreenState extends State<TaskScreen> {
         elevation: 0,
       ),
       body: Column(
+          children: [
+
+    Expanded(
+    child: ListView.builder(
+    itemCount: tareasPendientes.length,
+    itemBuilder: (context, index) {
+    return Card(
+    shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12),
+    ),
+    elevation: 3,
+    margin: const EdgeInsets.symmetric(
+    horizontal: 10,
+    vertical: 6,
+    ),
+    child: ListTile(
+    title: Text(
+    tareasPendientes[index]['texto'],
+    style: TextStyle(
+    fontWeight: FontWeight.w500,
+    decoration:
+    tareasPendientes[index]['completado']
+    ? TextDecoration.lineThrough
+        : TextDecoration.none,
+    ),
+    ),
+
+    subtitle: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+    Text(
+    tareasPendientes[index]['prioridad'] ?? 'Media',
+    style: TextStyle(
+    color:
+    (tareasPendientes[index]['prioridad'] ?? 'Media') ==
+    'Alta'
+    ? Colors.red
+        : (tareasPendientes[index]['prioridad'] ??
+    'Media') ==
+    'Media'
+    ? Colors.orange
+        : Colors.green,
+    ),
+    ),
+
+      Text(
+        "📅 ${tareasPendientes[index]['fecha'] ?? 'Sin fecha'}   ⏰ ${tareasPendientes[index]['hora'] ?? 'Sin hora'}",
+        style: const TextStyle(
+          fontSize: 12,
+          color: Colors.grey,
+        ),
+      ),
+    ],
+    ),
+
+      leading: Checkbox(
+        value: tareasPendientes[index]['completado'],
+        onChanged: (value) {
+          final tareaOriginal =
+              tareas.indexOf(tareasPendientes[index]);
+
+          toggleTarea(tareaOriginal, value!);
+        }
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Row(
-                children: [
-                  Expanded(
-                   child: TextField(
-                    controller: controller,
-                    decoration: InputDecoration(
-                      hintText: "Escribe una tarea",
-                      filled: true,
-                      fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                        borderRadius:
-                        BorderRadius.circular(12),
-                        borderSide:
-                        BorderSide.none,
-                    ),
-                  ),
-                ),
-             ),
+      IconButton(
+      icon: Icon(
+      tareasPendientes[index]['destacada'] == true
+      ? Icons.star
+        : Icons.star_border,
+        color: Colors.amber,
+      ),
+      onPressed: () {
+        final tareaOriginal = tareas.indexOf(tareasPendientes[index]);
+        toggleDestacada(tareaOriginal);
+      }
+    ),
 
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: agregarTarea,
-                  child: const Text("Agregar"),
-                )
-              ],
-            ),
-          ),
+      IconButton(
+        icon: const Icon(Icons.delete, color: Colors.red,),
+        onPressed: () {
+          final tareaOriginal = tareas.indexOf(tareasPendientes[index]);
+          eliminarTarea(tareaOriginal);
+        }
+      ),
+      ],
+    ),
 
-          DropdownButton<String>(
-            value: prioridadSeleccionada,
-            items: ['Alta', 'Media', 'Baja'].map((String value) {
-              return DropdownMenuItem(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                prioridadSeleccionada = value!;
-              });
-            },
-          ),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton(
-                  onPressed: seleccionarFecha,
-                  child: Text(
-                     fechaSeleccionada == null
-                         ? "Seleccionar Fecha"
-                         : "${fechaSeleccionada!.day}/${fechaSeleccionada!.month}/${fechaSeleccionada!.year}",
-                  ),
-              ),
-              ElevatedButton(
-                  onPressed: seleccionarHora,
-                  child: Text(
-                    horaSeleccionada == null
-                        ? "Seleccionar Hora"
-                        : horaSeleccionada!.format(context),
-                  ),
-              ),
-            ],
-          ),
-
-          Expanded(
-            child: ListView.builder(
-              itemCount: tareas.length,
-              itemBuilder: (context, index) {
-                return Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)
-                  ),
-                  elevation: 3,
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
-                  child: ListTile(
-                    title: Text(
-                      tareas[index]['texto'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        decoration: tareas[index]['completado']
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tareas[index]['prioridad'] ?? 'Media',
-                          style: TextStyle(
-                            color: (tareas[index]['prioridad'] ?? 'Media') == 'Alta'
-                                ? Colors.red
-                                : (tareas[index]['prioridad'] ?? 'Media') == 'Media'
-                                ? Colors.orange
-                                : Colors.green,
-                          ),
-                        ),
-
-                        Text(
-                          "📅 ${tareas[index]['fecha'] ?? 'Sin fecha'}   ⏰ ${tareas[index]['hora'] ?? 'Sin hora'}",
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    leading: Checkbox(
-                      value: tareas[index]['completado'],
-                      onChanged: (value) =>
-                          toggleTarea(index, value!),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red,),
-                      onPressed: () => eliminarTarea(index),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+    ),
+    );
+    },
+    ),
+    ),
+          ],
       ),
     );
   }
