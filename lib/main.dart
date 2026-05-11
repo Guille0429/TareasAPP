@@ -1,10 +1,47 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:permission_handler/permission_handler.dart';
 
-void main() {
+
+void main() async {
+
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // TIMEZONE
+  tz.initializeTimeZones();
+
+
+  // ANDROID INIT
+  const AndroidInitializationSettings
+  initializationSettingsAndroid =
+  AndroidInitializationSettings(
+      '@mipmap/ic_launcher');
+
+  const InitializationSettings
+  initializationSettings =
+  InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+
+  await flutterLocalNotificationsPlugin
+      .initialize(initializationSettings);
+
+  // PEDIR PERMISOS ANDROID 13+
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.requestNotificationsPermission();
+
   runApp(const MyApp());
 }
+
+final FlutterLocalNotificationsPlugin
+flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -95,6 +132,47 @@ class _TaskScreenState extends State<TaskScreen> {
       tareas[index]['destacada'] = !(tareas[index]['destacada'] ?? false);
     });
     guardarTareas();
+  }
+
+  Future<void> programarNotificacion(
+      String titulo,
+      DateTime fechaHora,
+      ) async {
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+
+      'Recordatorio de tarea',
+      titulo,
+
+      tz.TZDateTime.from(
+        fechaHora,
+        tz.local,
+      ),
+
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'tareas_channel',
+          'Recordatorios',
+          channelDescription:
+          'Canal de recordatorios',
+
+          importance: Importance.max,
+          priority: Priority.high,
+
+          playSound: true,
+          enableVibration: true,
+        ),
+      ),
+
+      androidScheduleMode:
+      AndroidScheduleMode.exactAllowWhileIdle,
+
+      uiLocalNotificationDateInterpretation:
+      UILocalNotificationDateInterpretation
+          .absoluteTime,
+    );
   }
 
   void mostrarModalNuevaTarea() {
@@ -342,6 +420,29 @@ class _TaskScreenState extends State<TaskScreen> {
   //Agregar tareas ADD
   void agregarTarea() {
     if (controller.text.isNotEmpty) {
+
+      String textoTarea = controller.text;
+
+      if (fechaSeleccionada != null &&
+          horaSeleccionada != null) {
+
+        final ahora = DateTime.now();
+
+        final fechaHora = DateTime(
+          fechaSeleccionada!.year,
+          fechaSeleccionada!.month,
+          fechaSeleccionada!.day,
+          horaSeleccionada!.hour,
+          horaSeleccionada!.minute,
+          ahora.second + 10,
+        );
+
+        programarNotificacion(
+          textoTarea,
+          fechaHora,
+        );
+      }
+
       setState(() {
         tareas.add({
           'texto': controller.text,
@@ -365,6 +466,7 @@ class _TaskScreenState extends State<TaskScreen> {
       guardarTareas();
     }
   }
+
 
   void eliminarTarea(int index) {
     showDialog(
