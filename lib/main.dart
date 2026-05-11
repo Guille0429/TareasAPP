@@ -213,6 +213,130 @@ class _TaskScreenState extends State<TaskScreen> {
     );
   }
 
+  void editarTarea(int index) {
+
+    controller.text = tareas[index]['texto'];
+
+    prioridadSeleccionada =
+        tareas[index]['prioridad'];
+
+    showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
+      ),
+
+      builder: (context) {
+
+          return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom:
+                  MediaQuery.of(context)
+                   .viewInsets.bottom + 20,
+              ),
+
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+
+                  const Text(
+                    "Editar tarea",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  TextField(
+                    controller: controller,
+                    decoration: InputDecoration(
+                      hintText: "Editar tarea",
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      border: OutlineInputBorder(
+                        borderRadius:
+                          BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  DropdownButtonFormField<String>(
+                    value: prioridadSeleccionada,
+
+                    items:
+                      ['Alta', 'Media', 'Baja']
+                        .map((String value) {
+                        return DropdownMenuItem(
+                          value: value,
+                          child: Text(value),
+                        );
+
+                      }).toList(),
+
+                      onChanged: (value) {
+
+                        setState(() {
+                          prioridadSeleccionada = value!;
+                        });
+                  },
+
+                      ),
+
+                  const SizedBox(height: 20),
+
+                  SizedBox(
+                    width: double.infinity,
+
+                    child: ElevatedButton(
+
+                        onPressed: () {
+
+                          setState(() {
+
+                            tareas[index]['texto'] =
+                                controller.text;
+
+                            tareas[index]['prioridad'] =
+                                prioridadSeleccionada;
+
+                          });
+
+                          guardarTareas();
+
+                          controller.clear();
+
+                          Navigator.pop(context);
+
+                        },
+
+                      child: const Text(
+                        "Guardar Cambios",
+                      ),
+
+
+                  ),
+                  ),
+
+                ],
+              ),
+            ),
+          );
+      },
+    );
+  }
+
   //Agregar tareas ADD
   void agregarTarea() {
     if (controller.text.isNotEmpty) {
@@ -333,6 +457,14 @@ class _TaskScreenState extends State<TaskScreen> {
     vertical: 6,
     ),
     child: ListTile(
+
+      onLongPress: () {
+        final tareaOriginal =
+            tareas.indexOf(tareasPendientes[index]);
+
+        editarTarea(tareaOriginal);
+      },
+
     title: Text(
     tareasPendientes[index]['texto'],
     style: TextStyle(
