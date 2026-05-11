@@ -247,7 +247,7 @@ class _TaskScreenState extends State<TaskScreen> {
         return AlertDialog(
           title: const Text("Eliminar tarea"),
           content: const Text(
-            "Estás seguro de borarr esta tarea",
+            "Estás seguro de borrar esta tarea",
           ),
           actions: [
             TextButton(
@@ -304,13 +304,28 @@ class _TaskScreenState extends State<TaskScreen> {
       body: Column(
           children: [
 
+            const Padding(
+                padding: EdgeInsets.all(10),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Pendientes",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+            ),
+
+
     Expanded(
-    child: ListView.builder(
-    itemCount: tareasPendientes.length,
-    itemBuilder: (context, index) {
-    return Card(
-    shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(12),
+     child: ListView.builder(
+     itemCount: tareasPendientes.length,
+     itemBuilder: (context, index) {
+     return Card(
+     shape: RoundedRectangleBorder(
+     borderRadius: BorderRadius.circular(12),
     ),
     elevation: 3,
     margin: const EdgeInsets.symmetric(
@@ -397,6 +412,72 @@ class _TaskScreenState extends State<TaskScreen> {
     },
     ),
     ),
+            const Padding(
+              padding: EdgeInsets.all(10),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Completadas",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+                child: ListView.builder(
+                  itemCount: tareasCompletadas.length,
+                    itemBuilder: (context, index) {
+
+                    final tareaOriginal =
+                        tareas.indexOf(tareasCompletadas[index]);
+
+                    return Card(
+                      color: Colors.grey[300],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 1,
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      child: ListTile(
+
+                        title: Text(
+                          tareasCompletadas[index]['texto'],
+                          style: const TextStyle(
+                            decoration: TextDecoration.lineThrough,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        subtitle: Text(
+                          "📅 ${tareasCompletadas[index]['fecha']}  ⏰ ${tareasCompletadas[index]['hora']}",
+                          style: const TextStyle(
+                            fontSize: 12,
+                          ),
+                        ),
+                        leading: Checkbox(
+                            value: true,
+                            onChanged: (value) {
+                              toggleTarea(tareaOriginal, false);
+                            },
+                        ),
+                        trailing: IconButton(
+                            icon: const Icon(
+                              Icons.delete,
+                              color: Colors.red,
+                            ),
+                          onPressed: () {
+                              eliminarTarea(tareaOriginal);
+                          },
+                        ),
+                      ),
+                    );
+                    }
+                ),
+            ),
           ],
       ),
     );
