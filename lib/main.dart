@@ -33,6 +33,8 @@ class _TaskScreenState extends State<TaskScreen> {
   DateTime? fechaSeleccionada;
   TimeOfDay? horaSeleccionada;
 
+  bool mostrarSoloDestacadas = false;
+
   //INIT
   @override
   void initState() {
@@ -407,8 +409,20 @@ class _TaskScreenState extends State<TaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tareasPendientes =
-    tareas.where((t) => t['completado'] == false).toList();
+    
+final tareasPendientes = tareas.where((t) {
+    if (t['completado'] == true) {
+      return false;
+    }
+
+    if (mostrarSoloDestacadas &&
+        t['destacada'] != true) {
+      return false;
+    }
+
+    return true;
+    
+  }).toList();
 
     final tareasCompletadas =
     tareas.where((t) => t['completado'] == true).toList();
@@ -440,6 +454,43 @@ class _TaskScreenState extends State<TaskScreen> {
                       ),
                 ),
               ),
+            ),
+            Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                ),
+
+                child: Row(
+                  children: [
+
+                    ChoiceChip(
+                      label: const Text("Todas"),
+
+                      selected: !mostrarSoloDestacadas,
+
+                      onSelected: (value) {
+
+                        setState(() {
+                          mostrarSoloDestacadas = false;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(width: 10),
+
+                    ChoiceChip(
+                        label: const Text("⭐ Destacadas"),
+
+                        selected: mostrarSoloDestacadas,
+
+                        onSelected: (value) {
+                          setState(() {
+                            mostrarSoloDestacadas = true;
+                          });
+                        },
+                    ),
+                  ],
+                ),
             ),
 
 
