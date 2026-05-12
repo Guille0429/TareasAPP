@@ -4,17 +4,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
 
+final FirebaseAuth auth = FirebaseAuth.instance;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. INICIALIZAR TIMEZONES
+  //FIREBASE
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // INICIALIZAR TIMEZONES
   tz.initializeTimeZones();
 
-  // 2. CONFIGURACIÓN DE INICIALIZACIÓN ANDROID
+  // CONFIGURACIÓN DE INICIALIZACIÓN ANDROID
   const AndroidInitializationSettings initializationSettingsAndroid =
   AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -26,7 +36,7 @@ void main() async {
     initializationSettings,
   );
 
-  // 3. SOLICITAR PERMISOS EXPLÍCITOS (Android 13+)
+  // SOLICITAR PERMISOS EXPLÍCITOS (Android 13+)
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<
       AndroidFlutterLocalNotificationsPlugin>()
@@ -40,9 +50,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: TaskScreen(),
+      home: StreamBuilder<User?>(
+        stream: auth.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasData) {
+            return const TaskScreen();
+          }
+          return const LoginScreen();
+        },
+      ),
     );
   }
 }
@@ -505,6 +528,81 @@ class _TaskScreenState extends State<TaskScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+
+  TextEditingController emailController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
+
+  Future<void> login() async {
+
+    await auth.signInWithEmailAndPassword(
+      email: emailController.text.trim(),
+      password: passwordController.text.trim(),
+    );
+  }
+
+  Future<void> registrar() async {
+
+    await auth.createUserWithEmailAndPassword(
+      email: emailController.text.trim(),
+      password: passwordController.text.trim(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Login")),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+
+            TextField(
+              controller: emailController,
+              decoration: const InputDecoration(
+                labelText: 'Correo',
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Contraseña',
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            ElevatedButton(
+              onPressed: login,
+              child: const Text("Iniciar Sesión"),
+            ),
+
+            ElevatedButton(
+              onPressed: registrar,
+              child: const Text("Crear Cuenta"),
+            ),
+
+          ],
+        ),
       ),
     );
   }
