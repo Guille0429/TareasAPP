@@ -8,6 +8,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
@@ -451,19 +452,67 @@ class _TaskScreenState extends State<TaskScreen> {
     final tareasCompletadas = tareas.where((t) => t['completado'] == true).toList();
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      floatingActionButton: FloatingActionButton(
+      backgroundColor: const Color(0xFFF5F7FB),
+      floatingActionButton: FloatingActionButton.extended(
+
         onPressed: mostrarModalNuevaTarea,
-        child: const Icon(Icons.add),
+
+        backgroundColor: Colors.deepPurple,
+
+        elevation: 8,
+
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadiusGeometry.circular(18),
+        ),
+        icon: const Icon(Icons.add, color: Colors.white),
+
+        label: const Text(
+          "Nueva tarea",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
       ),
+
+      //AppBAR
       appBar: AppBar(
-        title: const Text("Mis Tareas"),
-        centerTitle: true,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        toolbarHeight: 80,
+
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            Text(
+              "TaskBy Notes",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+
+            SizedBox(height: 4),
+
+            Text(
+              "Organiza tu día",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+
+          ],
+        ),
 
         actions: [
 
           PopupMenuButton<String>(
+
+            offset: const Offset(0, 50),
 
             onSelected: (value) async {
 
@@ -488,25 +537,56 @@ class _TaskScreenState extends State<TaskScreen> {
 
             itemBuilder: (context) => [
 
-              const PopupMenuItem(
-                value: 'account',
-                child: Text('Mi cuenta'),
+              PopupMenuItem(
+                enabled: false,
+
+                child: Text(
+                  auth.currentUser?.email ?? "Invitado",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
+
+              const PopupMenuDivider(),
 
               const PopupMenuItem(
                 value: 'logout',
-                child: Text('Cerrar sesión'),
+                child: Row(
+                  children: [
+
+                    Icon(Icons.logout, color: Colors.red),
+
+                    SizedBox(width: 10),
+
+                    Text('Cerrar sesión'),
+
+                  ],
+                ),
               ),
 
             ],
 
-            child: const Padding(
-              padding: EdgeInsets.only(right: 15),
+            child: Padding(
+              padding: const EdgeInsets.only(right: 15),
+
               child: CircleAvatar(
-                child: Icon(Icons.person),
+                radius: 22,
+                backgroundColor: Colors.deepPurple,
+
+                child: Text(
+
+                  auth.currentUser != null
+                   ? auth.currentUser!.email![0].toUpperCase()
+                   : "I",
+
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
-
           ),
 
         ],
@@ -552,50 +632,110 @@ class _TaskScreenState extends State<TaskScreen> {
               itemCount: tareasPendientes.length,
               itemBuilder: (context, index) {
                 final t = tareasPendientes[index];
-                return Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 3,
-                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+
                   child: ListTile(
+
+                    contentPadding: const EdgeInsets.all(18),
+
                     onLongPress: () => editarTarea(tareas.indexOf(t)),
+
                     title: Text(
                       t['texto'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        decoration: t['completado'] ? TextDecoration.lineThrough : TextDecoration.none,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          t['prioridad'] ?? 'Media',
-                          style: TextStyle(
-                            color: t['prioridad'] == 'Alta'
-                                ? Colors.red
-                                : t['prioridad'] == 'Media'
-                                ? Colors.orange
-                                : Colors.green,
+
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 10),
+
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+
+                        children: [
+
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+
+                            decoration: BoxDecoration(
+                              color: t['prioridad'] == 'Alta'
+                                  ? Colors.red.shade100
+                                  : t['prioridad'] == 'Media'
+                                  ? Colors.orange.shade100
+                                  : Colors.green.shade100,
+
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+
+                            child: Text(
+                              t['prioridad'],
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+
+                                color: t['prioridad'] == 'Alta'
+                                    ? Colors.red
+                                    : t['prioridad'] == 'Media'
+                                    ? Colors.orange
+                                    : Colors.green,
+                              ),
+                            ),
                           ),
-                        ),
-                        Text("📅 ${t['fecha']}   ⏰ ${t['hora']}",
-                            style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
+
+                          const SizedBox(height: 10),
+
+                          Text(
+                            "📅 ${t['fecha']}   ⏰ ${t['hora']}",
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 13,
+                            ),
+                          ),
+
+                        ],
+                      ),
                     ),
+
                     leading: Checkbox(
-                        value: t['completado'],
-                        onChanged: (value) => toggleTarea(tareas.indexOf(t), value!)),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      value: t['completado'],
+                      onChanged: (value) =>
+                          toggleTarea(tareas.indexOf(t), value!),
+                    ),
+
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+
                       children: [
+
                         IconButton(
-                            icon: Icon(
-                                t['destacada'] == true ? Icons.star : Icons.star_border,
-                                color: Colors.amber),
-                            onPressed: () => toggleDestacada(tareas.indexOf(t))),
-                        IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => eliminarTarea(tareas.indexOf(t))),
+                          icon: Icon(
+                            t['destacada'] == true
+                                ? Icons.star
+                                : Icons.star_border,
+                            color: Colors.amber,
+                          ),
+                          onPressed: () =>
+                              toggleDestacada(tareas.indexOf(t)),
+                        ),
+
                       ],
                     ),
                   ),
@@ -655,78 +795,364 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> login() async {
 
-    await auth.signInWithEmailAndPassword(
-      email: emailController.text.trim(),
-      password: passwordController.text.trim(),
-    );
+    try {
+
+      await auth.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+
+    } on FirebaseAuthException catch (e) {
+
+      String mensaje = "Error al iniciar sesión";
+
+      if (e.code == 'user-not-found') {
+        mensaje = "No existe una cuenta con ese correo";
+      }
+
+      else if (e.code == 'wrong-password') {
+        mensaje = "Contraseña incorrecta";
+      }
+
+      else if (e.code == 'invalid-email') {
+        mensaje = "Correo inválido";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje)),
+      );
+
+      print(e.code);
+      print(e.message);
+
+    }
+
   }
 
   Future<void> registrar() async {
 
-    await auth.createUserWithEmailAndPassword(
-      email: emailController.text.trim(),
-      password: passwordController.text.trim(),
+    try {
+
+      await auth.createUserWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+
+      if (context.mounted) {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Cuenta creada correctamente"),
+          ),
+        );
+
+      }
+
+    } on FirebaseAuthException catch (e) {
+
+      String mensaje = "Error al registrar";
+
+      if (e.code == 'email-already-in-use') {
+        mensaje = "Ese correo ya está registrado";
+      }
+
+      else if (e.code == 'weak-password') {
+        mensaje = "La contraseña debe tener mínimo 6 caracteres";
+      }
+
+      else if (e.code == 'invalid-email') {
+        mensaje = "Correo inválido";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje)),
+      );
+
+      print(e.code);
+      print(e.message);
+
+    }
+
+  }
+
+  Future<void> loginGoogle() async {
+
+    final GoogleSignInAccount? googleUser =
+    await GoogleSignIn().signIn();
+
+    if (googleUser == null) return;
+
+    final GoogleSignInAuthentication googleAuth =
+    await googleUser.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+
+      accessToken: googleAuth.accessToken,
+
+      idToken: googleAuth.idToken,
+
     );
+
+    await auth.signInWithCredential(credential);
+
+  }
+
+  void entrarComoInvitado() {
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const TaskScreen(),
+      ),
+    );
+
   }
 
   @override
   Widget build(BuildContext context) {
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      backgroundColor: const Color(0xFFF5F7FB),
+      
 
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(
-                labelText: 'Correo',
-              ),
-            ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(25),
 
-            const SizedBox(height: 20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
 
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Contraseña',
-              ),
-            ),
+            children: [
 
-            const SizedBox(height: 20),
+              Container(
+                width: 140,
+                height: 140,
 
-            ElevatedButton(
-              onPressed: login,
-              child: const Text("Iniciar Sesión"),
-            ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(35),
 
-            ElevatedButton(
-              onPressed: registrar,
-              child: const Text("Crear Cuenta"),
-            ),
-
-            const SizedBox(height: 10),
-
-            ElevatedButton(
-                onPressed: () {
-
-                  Navigator.pushReplacement(
-                      context,
-                    MaterialPageRoute(
-                        builder: (_) => const TaskScreen(),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.deepPurple.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
                     ),
-                  );
-                },
+                  ],
+                ),
 
-              child: const Text("Continuar como invitado"),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(35),
 
-               ),
+                  child: Image.asset(
+                    'assets/icon/Icon.png',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
 
-          ],
+              const SizedBox(height: 30),
+
+              const Text(
+                "TaskBy Notes",
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              const Text(
+                "Organiza tu vida de manera inteligente",
+                textAlign: TextAlign.center,
+
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
+              ),
+
+              const SizedBox(height: 50),
+
+              TextField(
+
+                controller: emailController,
+
+                decoration: InputDecoration(
+
+                  hintText: "Correo electrónico",
+
+                  prefixIcon: const Icon(Icons.email_outlined),
+
+                  filled: true,
+                  fillColor: Colors.white,
+
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+
+
+              const SizedBox(height: 18),
+
+              TextField(
+
+                controller: passwordController,
+
+                obscureText: true,
+
+                decoration: InputDecoration(
+
+                  hintText: "Contraseña",
+
+                  prefixIcon: const Icon(Icons.lock_outline),
+
+                  filled: true,
+                  fillColor: Colors.white,
+
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 25),
+
+              SizedBox(
+                width: double.infinity,
+                height: 58,
+
+                child: ElevatedButton(
+
+                  onPressed: login,
+
+                  style: ElevatedButton.styleFrom(
+
+                    backgroundColor: Colors.deepPurple,
+
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+
+                  child: const Text(
+                    "Iniciar sesión",
+                    style: TextStyle(
+                      fontSize: 17,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              TextButton(
+
+                onPressed: registrar,
+
+                child: const Text(
+
+                  "Crear cuenta",
+
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.deepPurple,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              const Row(
+                children: [
+
+                  Expanded(child: Divider()),
+
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(
+                      "o continuar con",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+
+                  Expanded(child: Divider()),
+
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                height: 58,
+
+                child: ElevatedButton.icon(
+
+                  onPressed: loginGoogle,
+
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+
+                    elevation: 3,
+
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+
+                  icon: const Icon(Icons.g_mobiledata, size: 32),
+
+                  label: const Text(
+                    "Continuar con Google",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                height: 58,
+
+                child: ElevatedButton.icon(
+
+                  onPressed: entrarComoInvitado,
+
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+
+                  icon: const Icon(Icons.person_outline),
+
+                  label: const Text(
+                    "Entrar como invitado",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+
+
+            ],
+          ),
         ),
       ),
     );
