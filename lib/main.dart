@@ -7,11 +7,14 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
 
 final FirebaseAuth auth = FirebaseAuth.instance;
+
+final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,8 +93,50 @@ class _TaskScreenState extends State<TaskScreen> {
   @override
   void initState() {
     super.initState();
-    cargarTareas();
+
+    if (auth.currentUser != null) {
+      cargarTareasFirebase();
+    } else {
+      cargarTareas();
+    }
   }
+
+  Future<void> guardarTareaFirebase(Map<String, dynamic> tarea) async {
+
+    User? user = auth.currentUser;
+
+    if (user == null) return;
+
+    await firestore
+        .collection('usuarios')
+        .doc(user.uid)
+        .collection('tareas')
+        .add(tarea);
+
+  }
+
+  Future<void> cargarTareasFirebase() async {
+
+    User? user = auth.currentUser;
+
+    if (user == null) return;
+
+    final snapshot = await firestore
+        .collection('usuarios')
+        .doc(user.uid)
+        .collection('tareas')
+        .get();
+
+    List<Map<String, dynamic>> tareasFirebase = snapshot.docs
+        .map((doc) => doc.data())
+        .toList();
+
+    setState(() {
+      tareas = tareasFirebase;
+    });
+
+  }
+
 
   // --- FUNCIONES ---
 
@@ -341,24 +386,29 @@ class _TaskScreenState extends State<TaskScreen> {
         programarNotificacion(notificationId, textoTarea, fechaHora);
       }
 
+      Map<String, dynamic> nuevaTarea = {
+        'texto': textoTarea,
+        'completado': false,
+        'destacada': false,
+        'prioridad': prioridadSeleccionada,
+        'fecha': fechaSeleccionada != null
+            ? "${fechaSeleccionada!.day}/${fechaSeleccionada!.month}/${fechaSeleccionada!.year}"
+            : "Sin fecha",
+        'hora': horaSeleccionada != null
+            ? horaSeleccionada!.format(context)
+            : "Sin hora",
+      };
+
       setState(() {
-        tareas.add({
-          'texto': textoTarea,
-          'completado': false,
-          'destacada': false,
-          'prioridad': prioridadSeleccionada,
-          'fecha': fechaSeleccionada != null
-              ? "${fechaSeleccionada!.day}/${fechaSeleccionada!.month}/${fechaSeleccionada!.year}"
-              : "Sin fecha",
-          'hora': horaSeleccionada != null
-              ? horaSeleccionada!.format(context)
-              : "Sin hora",
-        });
+        tareas.add(nuevaTarea);
+
         controller.clear();
         fechaSeleccionada = null;
         horaSeleccionada = null;
       });
+
       guardarTareas();
+      guardarTareaFirebase(nuevaTarea);
     }
   }
 
@@ -410,7 +460,58 @@ class _TaskScreenState extends State<TaskScreen> {
         title: const Text("Mis Tareas"),
         centerTitle: true,
         elevation: 0,
+
+        actions: [
+
+          PopupMenuButton<String>(
+
+            onSelected: (value) async {
+
+              if (value == 'logout') {
+
+                await auth.signOut();
+
+                if (context.mounted) {
+
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const LoginScreen(),
+                    ),
+                  );
+
+                }
+
+              }
+
+            },
+
+            itemBuilder: (context) => [
+
+              const PopupMenuItem(
+                value: 'account',
+                child: Text('Mi cuenta'),
+              ),
+
+              const PopupMenuItem(
+                value: 'logout',
+                child: Text('Cerrar sesión'),
+              ),
+
+            ],
+
+            child: const Padding(
+              padding: EdgeInsets.only(right: 15),
+              child: CircleAvatar(
+                child: Icon(Icons.person),
+              ),
+            ),
+
+          ),
+
+        ],
       ),
+
       body: Column(
         children: [
           const Padding(
@@ -430,12 +531,19 @@ class _TaskScreenState extends State<TaskScreen> {
                   selected: !mostrarSoloDestacadas,
                   onSelected: (value) => setState(() => mostrarSoloDestacadas = false),
                 ),
+
                 const SizedBox(width: 10),
+
                 ChoiceChip(
                   label: const Text("⭐ Destacadas"),
                   selected: mostrarSoloDestacadas,
-                  onSelected: (value) => setState(() => mostrarSoloDestacadas = true),
+                  onSelected: (value) {
+                    setState(() {
+                      mostrarSoloDestacadas = value;
+                    });
+                  },
                 ),
+
               ],
             ),
           ),
@@ -600,6 +708,23 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: registrar,
               child: const Text("Crear Cuenta"),
             ),
+
+            const SizedBox(height: 10),
+
+            ElevatedButton(
+                onPressed: () {
+
+                  Navigator.pushReplacement(
+                      context,
+                    MaterialPageRoute(
+                        builder: (_) => const TaskScreen(),
+                    ),
+                  );
+                },
+
+              child: const Text("Continuar como invitado"),
+
+               ),
 
           ],
         ),
