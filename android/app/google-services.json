@@ -12,7 +12,12 @@
           "package_name": "com.example.tareas_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "908583058119-p0dk30vsncp5gkha5vjccq87am3qdoa0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDtownqyIioGX383xBY212NS9d1PTd93Ek"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "908583058119-p0dk30vsncp5gkha5vjccq87am3qdoa0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

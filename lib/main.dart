@@ -108,11 +108,13 @@ class _TaskScreenState extends State<TaskScreen> {
 
     if (user == null) return;
 
-    await firestore
+    DocumentReference doc = await firestore
         .collection('usuarios')
         .doc(user.uid)
         .collection('tareas')
         .add(tarea);
+
+    tarea['id'] = doc.id;
 
   }
 
@@ -128,9 +130,15 @@ class _TaskScreenState extends State<TaskScreen> {
         .collection('tareas')
         .get();
 
-    List<Map<String, dynamic>> tareasFirebase = snapshot.docs
-        .map((doc) => doc.data())
-        .toList();
+    List<Map<String, dynamic>> tareasFirebase = snapshot.docs.map((doc) {
+
+      Map<String, dynamic> data = doc.data();
+
+      data['id'] = doc.id;
+
+      return data;
+
+    }).toList();
 
     setState(() {
       tareas = tareasFirebase;
@@ -211,11 +219,32 @@ class _TaskScreenState extends State<TaskScreen> {
     }
   }
 
-  void toggleDestacada(int index) {
+  Future<void> toggleDestacada(int index) async {
+
     setState(() {
-      tareas[index]['destacada'] = !(tareas[index]['destacada'] ?? false);
+      tareas[index]['destacada'] =
+      !(tareas[index]['destacada'] ?? false);
     });
+
     guardarTareas();
+
+    User? user = auth.currentUser;
+
+    if (user != null && tareas[index]['id'] != null) {
+
+      await firestore
+          .collection('usuarios')
+          .doc(user.uid)
+          .collection('tareas')
+          .doc(tareas[index]['id'])
+          .update({
+
+        'destacada': tareas[index]['destacada'],
+
+      });
+
+    }
+
   }
 
   void mostrarModalNuevaTarea() {
@@ -350,12 +379,30 @@ class _TaskScreenState extends State<TaskScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       setState(() {
                         tareas[index]['texto'] = controller.text;
                         tareas[index]['prioridad'] = prioridadSeleccionada;
                       });
                       guardarTareas();
+                      User? user = auth.currentUser;
+
+                      if (user != null &&
+                          tareas[index]['id'] != null) {
+
+                        await firestore
+                            .collection('usuarios')
+                            .doc(user.uid)
+                            .collection('tareas')
+                            .doc(tareas[index]['id'])
+                            .update({
+
+                          'texto': controller.text,
+                          'prioridad': prioridadSeleccionada,
+
+                        });
+
+                      }
                       controller.clear();
                       Navigator.pop(context);
                     },
@@ -423,10 +470,27 @@ class _TaskScreenState extends State<TaskScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+
+                User? user = auth.currentUser;
+
+                if (user != null && tareas[index]['id'] != null) {
+
+                  await firestore
+                      .collection('usuarios')
+                      .doc(user.uid)
+                      .collection('tareas')
+                      .doc(tareas[index]['id'])
+                      .delete();
+
+                }
+
                 setState(() => tareas.removeAt(index));
+
                 guardarTareas();
+
                 Navigator.pop(context);
+
               },
               child: const Text("Eliminar"),
             ),
@@ -436,9 +500,31 @@ class _TaskScreenState extends State<TaskScreen> {
     );
   }
 
-  void toggleTarea(int index, bool value) {
-    setState(() => tareas[index]['completado'] = value);
+  Future<void> toggleTarea(int index, bool value) async {
+
+    setState(() {
+      tareas[index]['completado'] = value;
+    });
+
     guardarTareas();
+
+    User? user = auth.currentUser;
+
+    if (user != null && tareas[index]['id'] != null) {
+
+      await firestore
+          .collection('usuarios')
+          .doc(user.uid)
+          .collection('tareas')
+          .doc(tareas[index]['id'])
+          .update({
+
+        'completado': value,
+
+      });
+
+    }
+
   }
 
   @override
@@ -788,22 +874,302 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+
+  TextEditingController nombreController =
+  TextEditingController();
+
+  TextEditingController telefonoController =
+  TextEditingController();
+
+  TextEditingController emailController =
+  TextEditingController();
+
+  TextEditingController passwordController =
+  TextEditingController();
+
+  TextEditingController confirmarController =
+  TextEditingController();
+
+  Future<void> registrarUsuario() async {
+
+    if (passwordController.text !=
+        confirmarController.text) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Las contraseñas no coinciden"),
+        ),
+      );
+
+      return;
+    }
+
+    try {
+
+      UserCredential userCredential =
+      await auth.createUserWithEmailAndPassword(
+
+        email: emailController.text.trim(),
+
+        password: passwordController.text.trim(),
+      );
+
+      await firestore
+          .collection('usuarios')
+          .doc(userCredential.user!.uid)
+          .set({
+
+        'nombre': nombreController.text.trim(),
+        'telefono': telefonoController.text.trim(),
+        'email': emailController.text.trim(),
+
+      });
+
+      if (context.mounted) {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Cuenta creada correctamente"),
+          ),
+        );
+
+        Navigator.pop(context);
+
+      }
+
+    } on FirebaseAuthException catch (e) {
+
+      String mensaje = "Error al registrar";
+
+      if (e.code == 'email-already-in-use') {
+        mensaje = "Ese correo ya está registrado";
+      }
+
+      else if (e.code == 'weak-password') {
+        mensaje = "La contraseña debe tener mínimo 6 caracteres";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje)),
+      );
+
+    }
+
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    return Scaffold(
+
+      backgroundColor: const Color(0xFFF5F7FB),
+
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+
+      body: SingleChildScrollView(
+
+        padding: const EdgeInsets.all(25),
+
+        child: Column(
+
+          children: [
+
+            const SizedBox(height: 20),
+
+            const Text(
+              "Crear Cuenta",
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 35),
+
+            TextField(
+              controller: nombreController,
+
+              decoration: InputDecoration(
+                hintText: "Nombre completo",
+
+                prefixIcon:
+                const Icon(Icons.person_outline),
+
+                filled: true,
+                fillColor: Colors.white,
+
+                border: OutlineInputBorder(
+                  borderRadius:
+                  BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            TextField(
+              controller: telefonoController,
+
+              keyboardType: TextInputType.phone,
+
+              decoration: InputDecoration(
+                hintText: "Número de teléfono",
+
+                prefixIcon:
+                const Icon(Icons.phone_outlined),
+
+                filled: true,
+                fillColor: Colors.white,
+
+                border: OutlineInputBorder(
+                  borderRadius:
+                  BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            TextField(
+              controller: emailController,
+
+              decoration: InputDecoration(
+                hintText: "Correo electrónico",
+
+                prefixIcon:
+                const Icon(Icons.email_outlined),
+
+                filled: true,
+                fillColor: Colors.white,
+
+                border: OutlineInputBorder(
+                  borderRadius:
+                  BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            TextField(
+              controller: passwordController,
+
+              obscureText: true,
+
+              decoration: InputDecoration(
+                hintText: "Contraseña",
+
+                prefixIcon:
+                const Icon(Icons.lock_outline),
+
+                filled: true,
+                fillColor: Colors.white,
+
+                border: OutlineInputBorder(
+                  borderRadius:
+                  BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            TextField(
+              controller: confirmarController,
+
+              obscureText: true,
+
+              decoration: InputDecoration(
+                hintText: "Confirmar contraseña",
+
+                prefixIcon:
+                const Icon(Icons.lock_outline),
+
+                filled: true,
+                fillColor: Colors.white,
+
+                border: OutlineInputBorder(
+                  borderRadius:
+                  BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            SizedBox(
+              width: double.infinity,
+              height: 58,
+
+              child: ElevatedButton(
+
+                onPressed: registrarUsuario,
+
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                    BorderRadius.circular(18),
+                  ),
+                ),
+
+                child: const Text(
+                  "Crear cuenta",
+
+                  style: TextStyle(
+                    fontSize: 17,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LoginScreenState extends State<LoginScreen> {
 
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
   Future<void> login() async {
-
     try {
-
       await auth.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
+      if (context.mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const TaskScreen(),
+          ),
+        );
+      }
     } on FirebaseAuthException catch (e) {
-
       String mensaje = "Error al iniciar sesión";
 
       if (e.code == 'user-not-found') {
@@ -824,32 +1190,67 @@ class _LoginScreenState extends State<LoginScreen> {
 
       print(e.code);
       print(e.message);
+    }
+  }
+
+  Future<void> recuperarPassword() async {
+
+    if (emailController.text.trim().isEmpty) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Escribe tu correo"),
+        ),
+      );
+
+      return;
+    }
+
+    try {
+
+      await auth.sendPasswordResetEmail(
+        email: emailController.text.trim(),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Correo de recuperación enviado",
+          ),
+        ),
+      );
+
+    } on FirebaseAuthException catch (e) {
+
+      String mensaje = "Error al enviar correo";
+
+      if (e.code == 'user-not-found') {
+        mensaje = "No existe una cuenta con ese correo";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mensaje)),
+      );
 
     }
 
   }
 
   Future<void> registrar() async {
-
     try {
-
       await auth.createUserWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
       if (context.mounted) {
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Cuenta creada correctamente"),
           ),
         );
-
       }
-
     } on FirebaseAuthException catch (e) {
-
       String mensaje = "Error al registrar";
 
       if (e.code == 'email-already-in-use') {
@@ -870,30 +1271,48 @@ class _LoginScreenState extends State<LoginScreen> {
 
       print(e.code);
       print(e.message);
-
     }
-
   }
 
   Future<void> loginGoogle() async {
 
-    final GoogleSignInAccount? googleUser =
-    await GoogleSignIn().signIn();
+    try {
 
-    if (googleUser == null) return;
+      final GoogleSignInAccount? googleUser =
+      await GoogleSignIn().signIn();
 
-    final GoogleSignInAuthentication googleAuth =
-    await googleUser.authentication;
+      if (googleUser == null) return;
 
-    final credential = GoogleAuthProvider.credential(
+      final GoogleSignInAuthentication googleAuth =
+      await googleUser.authentication;
 
-      accessToken: googleAuth.accessToken,
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-      idToken: googleAuth.idToken,
+      await auth.signInWithCredential(credential);
 
-    );
+      if (context.mounted) {
 
-    await auth.signInWithCredential(credential);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const TaskScreen(),
+          ),
+        );
+
+      }
+
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error Google: $e"),
+        ),
+      );
+
+    }
 
   }
 
@@ -1050,7 +1469,16 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               TextButton(
 
-                onPressed: registrar,
+                onPressed: () {
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RegisterScreen(),
+                    ),
+                  );
+
+                },
 
                 child: const Text(
 
@@ -1060,6 +1488,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Colors.deepPurple,
+                  ),
+                ),
+              ),
+
+              TextButton(
+
+                onPressed: recuperarPassword,
+
+                child: const Text(
+
+                  "¿Olvidaste tu contraseña?",
+
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
