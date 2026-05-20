@@ -81,6 +81,198 @@ class TaskScreen extends StatefulWidget {
   State<TaskScreen> createState() => _TaskScreenState();
 }
 
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  Future<Map<String, dynamic>?> obtenerDatosUsuario() async {
+
+    User? user = auth.currentUser;
+
+    if (user == null) return null;
+
+    DocumentSnapshot doc = await firestore
+        .collection('usuarios')
+        .doc(user.uid)
+        .get();
+
+    return doc.data() as Map<String, dynamic>?;
+
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    return Scaffold(
+
+      backgroundColor: const Color(0xFFF5F7FB),
+
+      appBar: AppBar(
+        title: const Text("Mi Perfil"),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+      ),
+
+      body: FutureBuilder<Map<String, dynamic>?>(
+
+        future: obtenerDatosUsuario(),
+
+        builder: (context, snapshot) {
+
+          if (snapshot.connectionState ==
+              ConnectionState.waiting) {
+
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+
+          }
+
+          if (!snapshot.hasData || snapshot.data == null) {
+
+            return const Center(
+              child: Text("No hay datos"),
+            );
+
+          }
+
+          final data = snapshot.data!;
+
+          return Padding(
+            padding: const EdgeInsets.all(25),
+
+            child: Column(
+
+              children: [
+
+                const SizedBox(height: 20),
+
+                CircleAvatar(
+                  radius: 55,
+                  backgroundColor: Colors.deepPurple,
+
+                  child: Text(
+
+                    data['nombre'][0].toUpperCase(),
+
+                    style: const TextStyle(
+                      fontSize: 40,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 25),
+
+                Card(
+
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+
+                  child: ListTile(
+
+                    leading: const Icon(Icons.person),
+
+                    title: const Text("Nombre"),
+
+                    subtitle: Text(data['nombre'] ?? ''),
+
+                  ),
+                ),
+
+                const SizedBox(height: 15),
+
+                Card(
+
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+
+                  child: ListTile(
+
+                    leading: const Icon(Icons.email),
+
+                    title: const Text("Correo"),
+
+                    subtitle: Text(data['email'] ?? ''),
+
+                  ),
+                ),
+
+                const SizedBox(height: 15),
+
+                Card(
+
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+
+                  child: ListTile(
+
+                    leading: const Icon(Icons.phone),
+
+                    title: const Text("Teléfono"),
+
+                    subtitle: Text(data['telefono'] ?? ''),
+
+                  ),
+                ),
+
+                const Spacer(),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+
+                  child: ElevatedButton.icon(
+
+                    onPressed: () async {
+
+                      await auth.signOut();
+
+                      if (context.mounted) {
+
+                        Navigator.pushAndRemoveUntil(
+
+                          context,
+
+                          MaterialPageRoute(
+                            builder: (_) =>
+                            const LoginScreen(),
+                          ),
+
+                              (route) => false,
+
+                        );
+
+                      }
+
+                    },
+
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+
+                    icon: const Icon(Icons.logout),
+
+                    label: const Text(
+                      "Cerrar sesión",
+                    ),
+                  ),
+                ),
+
+              ],
+            ),
+          );
+
+        },
+      ),
+    );
+  }
+}
+
 class _TaskScreenState extends State<TaskScreen> {
   List<Map<String, dynamic>> tareas = [];
   TextEditingController controller = TextEditingController();
@@ -602,6 +794,17 @@ class _TaskScreenState extends State<TaskScreen> {
 
             onSelected: (value) async {
 
+              if (value == 'perfil') {
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ProfileScreen(),
+                  ),
+                );
+
+              }
+
               if (value == 'logout') {
 
                 await auth.signOut();
@@ -622,6 +825,22 @@ class _TaskScreenState extends State<TaskScreen> {
             },
 
             itemBuilder: (context) => [
+
+              const PopupMenuItem(
+                value: 'perfil',
+
+                child: Row(
+                  children: [
+
+                    Icon(Icons.person),
+
+                    SizedBox(width: 10),
+
+                    Text('Mi perfil'),
+
+                  ],
+                ),
+              ),
 
               PopupMenuItem(
                 enabled: false,
@@ -1234,44 +1453,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     }
 
-  }
-
-  Future<void> registrar() async {
-    try {
-      await auth.createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Cuenta creada correctamente"),
-          ),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      String mensaje = "Error al registrar";
-
-      if (e.code == 'email-already-in-use') {
-        mensaje = "Ese correo ya está registrado";
-      }
-
-      else if (e.code == 'weak-password') {
-        mensaje = "La contraseña debe tener mínimo 6 caracteres";
-      }
-
-      else if (e.code == 'invalid-email') {
-        mensaje = "Correo inválido";
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(mensaje)),
-      );
-
-      print(e.code);
-      print(e.message);
-    }
   }
 
   Future<void> loginGoogle() async {
