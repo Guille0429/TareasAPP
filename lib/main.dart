@@ -971,6 +971,39 @@ class _TaskScreenState extends State<TaskScreen> {
     );
   }
 
+  Widget estadisticaItem(
+      String titulo,
+      String valor,
+      ) {
+
+    return Column(
+
+      children: [
+
+        Text(
+          valor,
+
+          style: const TextStyle(
+            color: Colors.deepPurple,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 5),
+
+        Text(
+          titulo,
+
+          style: const TextStyle(
+            color: Colors.grey,
+          ),
+        ),
+
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tareasPendientes = tareas.where((t) {
@@ -1000,6 +1033,26 @@ class _TaskScreenState extends State<TaskScreen> {
     }).toList();
 
     final tareasCompletadas = tareas.where((t) => t['completado'] == true).toList();
+
+
+    int total = tareas.length;
+
+    int completadas =
+        tareas.where((t) =>
+        t['completado'] == true).length;
+
+    int pendientes =
+        tareas.where((t) =>
+        t['completado'] != true).length;
+
+    int destacadas =
+        tareas.where((t) =>
+        t['destacada'] == true).length;
+
+    double progreso =
+    total == 0
+        ? 0
+        : completadas / total;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
@@ -1059,6 +1112,111 @@ class _TaskScreenState extends State<TaskScreen> {
         ),
 
         actions: [
+
+          IconButton(
+
+            icon: const Icon(
+              Icons.bar_chart,
+              color: Colors.black,
+            ),
+
+            onPressed: () {
+
+              showModalBottomSheet(
+
+                context: context,
+
+                shape: const RoundedRectangleBorder(
+                  borderRadius:
+                  BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
+                ),
+
+                builder: (context) {
+
+                  return Padding(
+
+                    padding: const EdgeInsets.all(25),
+
+                    child: Column(
+
+                      mainAxisSize: MainAxisSize.min,
+
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
+
+                      children: [
+
+                        const Text(
+                          "Estadísticas",
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 25),
+
+                        LinearProgressIndicator(
+
+                          value: progreso,
+
+                          minHeight: 12,
+
+                          borderRadius:
+                          BorderRadius.circular(20),
+
+                          backgroundColor:
+                          Colors.grey.shade300,
+
+                          color: Colors.deepPurple,
+
+                        ),
+
+                        const SizedBox(height: 30),
+
+                        Row(
+
+                          mainAxisAlignment:
+                          MainAxisAlignment.spaceAround,
+
+                          children: [
+
+                            estadisticaItem(
+                              "Total",
+                              total.toString(),
+                            ),
+
+                            estadisticaItem(
+                              "Pend.",
+                              pendientes.toString(),
+                            ),
+
+                            estadisticaItem(
+                              "Done",
+                              completadas.toString(),
+                            ),
+
+                            estadisticaItem(
+                              "⭐",
+                              destacadas.toString(),
+                            ),
+
+                          ],
+                        ),
+
+                        const SizedBox(height: 30),
+
+                      ],
+                    ),
+                  );
+
+                },
+              );
+
+            },
+          ),
 
           PopupMenuButton<String>(
 
