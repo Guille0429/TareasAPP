@@ -81,8 +81,20 @@ class TaskScreen extends StatefulWidget {
   State<TaskScreen> createState() => _TaskScreenState();
 }
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() =>
+      _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  TextEditingController nombreController =
+  TextEditingController();
+
+  TextEditingController telefonoController =
+  TextEditingController();
 
   Future<Map<String, dynamic>?> obtenerDatosUsuario() async {
 
@@ -96,6 +108,38 @@ class ProfileScreen extends StatelessWidget {
         .get();
 
     return doc.data() as Map<String, dynamic>?;
+
+  }
+
+  Future<void> editarPerfil(BuildContext context) async {
+
+    User? user = auth.currentUser;
+
+    if (user == null) return;
+
+    await firestore
+        .collection('usuarios')
+        .doc(user.uid)
+        .update({
+
+      'nombre': nombreController.text.trim(),
+      'telefono': telefonoController.text.trim(),
+
+    });
+
+    if (context.mounted) {
+
+      Navigator.pop(context);
+
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Perfil actualizado"),
+        ),
+      );
+
+    }
 
   }
 
@@ -219,6 +263,152 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
 
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+
+                  child: ElevatedButton.icon(
+
+                    onPressed: () {
+
+                      nombreController.text =
+                          data['nombre'] ?? '';
+
+                      telefonoController.text =
+                          data['telefono'] ?? '';
+
+                      showModalBottomSheet(
+
+                        context: context,
+
+                        isScrollControlled: true,
+
+                        shape: const RoundedRectangleBorder(
+                          borderRadius:
+                          BorderRadius.vertical(
+                            top: Radius.circular(25),
+                          ),
+                        ),
+
+                        builder: (context) {
+
+                          return Padding(
+
+                            padding: EdgeInsets.only(
+
+                              left: 20,
+                              right: 20,
+                              top: 25,
+
+                              bottom:
+                              MediaQuery.of(context)
+                                  .viewInsets
+                                  .bottom + 20,
+
+                            ),
+
+                            child: Column(
+
+                              mainAxisSize: MainAxisSize.min,
+
+                              children: [
+
+                                const Text(
+                                  "Editar Perfil",
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 25),
+
+                                TextField(
+
+                                  controller: nombreController,
+
+                                  decoration: InputDecoration(
+
+                                    labelText: "Nombre",
+
+                                    border: OutlineInputBorder(
+                                      borderRadius:
+                                      BorderRadius.circular(15),
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 20),
+
+                                TextField(
+
+                                  controller:
+                                  telefonoController,
+
+                                  keyboardType:
+                                  TextInputType.phone,
+
+                                  decoration: InputDecoration(
+
+                                    labelText: "Teléfono",
+
+                                    border: OutlineInputBorder(
+                                      borderRadius:
+                                      BorderRadius.circular(15),
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 25),
+
+                                SizedBox(
+
+                                  width: double.infinity,
+                                  height: 55,
+
+                                  child: ElevatedButton(
+
+                                    onPressed: () =>
+                                        editarPerfil(context),
+
+                                    style:
+                                    ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                      Colors.deepPurple,
+                                      foregroundColor:
+                                      Colors.white,
+                                    ),
+
+                                    child: const Text(
+                                      "Guardar cambios",
+                                    ),
+                                  ),
+                                ),
+
+                              ],
+                            ),
+                          );
+
+                        },
+                      );
+
+                    },
+
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                    ),
+
+                    icon: const Icon(Icons.edit),
+
+                    label: const Text(
+                      "Editar perfil",
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
                 const Spacer(),
 
                 SizedBox(
@@ -282,6 +472,8 @@ class _TaskScreenState extends State<TaskScreen> {
   TimeOfDay? horaSeleccionada;
 
   bool mostrarSoloDestacadas = false;
+
+  String busqueda = '';
 
   @override
   void initState() {
@@ -722,9 +914,24 @@ class _TaskScreenState extends State<TaskScreen> {
   @override
   Widget build(BuildContext context) {
     final tareasPendientes = tareas.where((t) {
+
       if (t['completado'] == true) return false;
-      if (mostrarSoloDestacadas && t['destacada'] != true) return false;
+
+      if (mostrarSoloDestacadas &&
+          t['destacada'] != true) {
+        return false;
+      }
+
+      if (busqueda.isNotEmpty &&
+          !t['texto']
+              .toString()
+              .toLowerCase()
+              .contains(busqueda.toLowerCase())) {
+        return false;
+      }
+
       return true;
+
     }).toList();
 
     final tareasCompletadas = tareas.where((t) => t['completado'] == true).toList();
@@ -897,8 +1104,41 @@ class _TaskScreenState extends State<TaskScreen> {
         ],
       ),
 
+
+
       body: Column(
         children: [
+
+          Padding(
+            padding: const EdgeInsets.all(12),
+
+            child: TextField(
+
+              onChanged: (value) {
+
+                setState(() {
+                  busqueda = value;
+                });
+
+              },
+
+              decoration: InputDecoration(
+
+                hintText: "Buscar tareas...",
+
+                prefixIcon: const Icon(Icons.search),
+
+                filled: true,
+
+                fillColor: Colors.white,
+
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
           const Padding(
             padding: EdgeInsets.all(10),
             child: Align(
