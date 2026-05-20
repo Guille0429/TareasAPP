@@ -467,6 +467,7 @@ class _TaskScreenState extends State<TaskScreen> {
   List<Map<String, dynamic>> tareas = [];
   TextEditingController controller = TextEditingController();
   String prioridadSeleccionada = 'Media';
+  String categoriaSeleccionada = 'Personal';
 
   DateTime? fechaSeleccionada;
   TimeOfDay? horaSeleccionada;
@@ -474,6 +475,8 @@ class _TaskScreenState extends State<TaskScreen> {
   bool mostrarSoloDestacadas = false;
 
   String busqueda = '';
+
+  String filtroCategoria = 'Todas';
 
   @override
   void initState() {
@@ -676,6 +679,38 @@ class _TaskScreenState extends State<TaskScreen> {
                   }).toList(),
                   onChanged: (value) => setState(() => prioridadSeleccionada = value!),
                 ),
+                DropdownButtonFormField<String>(
+
+                  value: categoriaSeleccionada,
+
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+
+                  items: [
+
+                    'Personal',
+                    'Trabajo',
+                    'Universidad',
+                    'Urgente',
+
+                  ].map((String value) {
+
+                    return DropdownMenuItem(
+                      value: value,
+                      child: Text(value),
+                    );
+
+                  }).toList(),
+
+                  onChanged: (value) {
+
+                    setState(() {
+                      categoriaSeleccionada = value!;
+                    });
+
+                  },
+                ),
                 const SizedBox(height: 20),
                 Row(
                   children: [
@@ -823,6 +858,7 @@ class _TaskScreenState extends State<TaskScreen> {
         'completado': false,
         'destacada': false,
         'prioridad': prioridadSeleccionada,
+        'categoria': categoriaSeleccionada,
         'fecha': fechaSeleccionada != null
             ? "${fechaSeleccionada!.day}/${fechaSeleccionada!.month}/${fechaSeleccionada!.year}"
             : "Sin fecha",
@@ -911,6 +947,30 @@ class _TaskScreenState extends State<TaskScreen> {
 
   }
 
+  Widget filtroChip(String categoria) {
+
+    return Padding(
+
+      padding: const EdgeInsets.only(right: 10),
+
+      child: ChoiceChip(
+
+        label: Text(categoria),
+
+        selected: filtroCategoria == categoria,
+
+        onSelected: (value) {
+
+          setState(() {
+            filtroCategoria = categoria;
+          });
+
+        },
+
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tareasPendientes = tareas.where((t) {
@@ -927,6 +987,11 @@ class _TaskScreenState extends State<TaskScreen> {
               .toString()
               .toLowerCase()
               .contains(busqueda.toLowerCase())) {
+        return false;
+      }
+
+      if (filtroCategoria != 'Todas' &&
+          t['categoria'] != filtroCategoria) {
         return false;
       }
 
@@ -1139,6 +1204,28 @@ class _TaskScreenState extends State<TaskScreen> {
               ),
             ),
           ),
+          SizedBox(
+            height: 50,
+
+            child: ListView(
+
+              scrollDirection: Axis.horizontal,
+
+              children: [
+
+                const SizedBox(width: 10),
+
+                filtroChip('Todas'),
+                filtroChip('Personal'),
+                filtroChip('Trabajo'),
+                filtroChip('Universidad'),
+                filtroChip('Urgente'),
+
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 10),
           const Padding(
             padding: EdgeInsets.all(10),
             child: Align(
@@ -1241,6 +1328,34 @@ class _TaskScreenState extends State<TaskScreen> {
                                     : t['prioridad'] == 'Media'
                                     ? Colors.orange
                                     : Colors.green,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          Container(
+
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+
+                            decoration: BoxDecoration(
+
+                              color: Colors.deepPurple.shade100,
+
+                              borderRadius: BorderRadius.circular(20),
+
+                            ),
+
+                            child: Text(
+
+                              t['categoria'] ?? 'Personal',
+
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.deepPurple,
                               ),
                             ),
                           ),
